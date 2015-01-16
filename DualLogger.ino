@@ -49,7 +49,11 @@ void setup()
   // output, even if you don't use it:
   pinMode(10, OUTPUT);
   pinMode (3, INPUT_PULLUP);
+<<<<<<< HEAD
   attachInterrupt (1, buttonTemperature, FALLING);
+=======
+  attachInterrupt (1, buttonTemperature, FALLING); //Interrupts on the buttons
+>>>>>>> interrupts
   pinMode (2, INPUT_PULLUP);
   attachInterrupt(0,buttonVoltage, FALLING);
 
