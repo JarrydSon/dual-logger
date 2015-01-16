@@ -1,4 +1,5 @@
 //Now part of a repository on GitHub :D
+//Could probably do with better code. I don't like the way I've done things. So inefficient.
 /*
  The circuit:
  * analog sensors on analog 0
