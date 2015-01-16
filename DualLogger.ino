@@ -191,7 +191,7 @@ void writeToFile(String fileType)
   }
 }
 
-void updateCount(String fileType)
+void updateCount(String fileType)//I don't like this section
 {
   if (fileType == "Voltage")
   {
