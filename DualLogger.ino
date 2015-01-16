@@ -18,7 +18,7 @@
 #define CD 9
 #define RESET 8
 
-TFT screen = TFT(LD_CS, CD,RESET);
+TFT screen = TFT(LD_CS, CD, RESET);
 
 //===================================GLOBAL VARIABLES===============================================================
 int lineCountV = 0;
@@ -43,26 +43,29 @@ void setup()
 {
   // Open serial communications and wait for port to open:
   Serial.begin(9600);
-  
+
   // make sure that the default chip select pin is set to
   // output, even if you don't use it:
   pinMode(10, OUTPUT);
-  
+  pinMode (3, INPUT_PULLUP);
+  pinMode (2, INPUT_PULLUP);
+
+
   screen.begin();
-  screen.background (0,0,0);
-  screen.stroke (0,255,0);
+  screen.background (0, 0, 0);
+  screen.stroke (0, 255, 0);
   screen.setRotation(2);
-  strMenu.toCharArray(menu,100);
-  screen.text(menu,0,0);
+  strMenu.toCharArray(menu, 100);
+  screen.text(menu, 0, 0);
   Serial.println (strMenu);
   while (choice != 'B') {
     choice = Serial.read();
   }
-  
+
   // see if the card is present and can be initialized:
-  screen.stroke (0,0,0);
-  screen.text(menu,0,0);
-  
+  screen.stroke (0, 0, 0);
+  screen.text(menu, 0, 0);
+
   if (!SD.begin(SD_CS)) {
     Serial.println("Card failed, or not present");
     // don't do anything more:
@@ -84,13 +87,17 @@ void loop()
     getSensorData(1);
     writeToFile("Temperature");
     updateCount("Temperature");
-    
-    if (choice == 'V'){
+
+    if (choice == 'V')
+    {
       displayGraph(0);
     }
-     else {displayGraph(1);}
-    
-    
+    else
+    {
+      displayGraph(1);
+    }
+
+    checkButton();
     delay(1000);
   }
   else {
@@ -100,44 +107,57 @@ void loop()
 }
 
 //=========================================================FUNCTIONS===============================================
-
+void checkButton()
+{
+  if (digitalRead(2) == 0) {
+    choice = 'V';
+    screen.background(0, 0, 0);
+    xPos = 0;
+  }
+  if (digitalRead(3) == 0) {
+    choice = 'T';
+    screen.background(0, 0, 0);
+    xPos = 0;
+  }
+  
+}
 void displayGraph (int pin)
 {
-    int sensor = 0;
-    sensor = analogRead(pin);
-    int drawHeight = map(sensor, 0, 1023, 0, screen.height());
-    switch(pin){
-      case 0:
-        screen.stroke (255,0,0);
-        break;
-      case 1:
-        screen.stroke (0,255,120);
-        break;
-      default:
-        screen.stroke (255,255,255);
-        break;
-    }
-    if (xPos >= screen.width()) {
+  int sensor = 0;
+  sensor = analogRead(pin);
+  int drawHeight = map(sensor, 0, 1023, 0, screen.height());
+  switch (pin) {
+    case 0:
+      screen.stroke (255, 0, 0);
+      break;
+    case 1:
+      screen.stroke (0, 255, 120);
+      break;
+    default:
+      screen.stroke (255, 255, 255);
+      break;
+  }
+  if (xPos >= screen.width()) {
     xPos = 0;
-    screen.background(0,0,0);
+    screen.background(0, 0, 0);
   }
   else {
     // increment the horizontal position:
     xPos++;
   }
-  
-  screen.line(xPos, screen.height() - drawHeight,xPos,screen.height());
+
+  screen.line(xPos, screen.height() - drawHeight, xPos, screen.height());
 
   delay(16);
 }
 
 void getSensorData(int pin)
 {
-    int sensor = 0;
-    sensor = analogRead(pin);
-    dataString = (String(millis() / 1000));
-    dataString += (",");
-    dataString += String(sensor);  
+  int sensor = 0;
+  sensor = analogRead(pin);
+  dataString = (String(millis() / 1000));
+  dataString += (",");
+  dataString += String(sensor);
 }
 
 void writeToFile(String fileType)
@@ -154,9 +174,13 @@ void writeToFile(String fileType)
     dataFile.close();
     // print to the serial port too:
     Serial.print("Line: ");
-    if (fileType == "Voltage") {
-    Serial.print (lineCountV);}
-    else {Serial.print (lineCountT);}
+    if (fileType == "Voltage")
+    {
+      Serial.print (lineCountV);
+    }
+    else
+    { Serial.print (lineCountT);
+    }
     Serial.print(" Data: ");
     Serial.println(dataString);
   }
@@ -183,7 +207,7 @@ void updateCount(String fileType)
       Serial.println("Saving to new file: " + fileName);
     }
   }
-  else 
+  else
   {
     lineCountT ++;
     if (lineCountT >= 50) //if the line count exceeds 50 then fileCount will be incremented and thus a new file should be created.
@@ -199,14 +223,14 @@ void updateCount(String fileType)
   }
 }
 
-void serialEvent() 
+void serialEvent()
 {
-  while (Serial.available()) 
+  while (Serial.available())
   {
     // get the new byte:
     char inChar = (char)Serial.read();
     choice = inChar;
-    screen.background(0,0,0);
+    screen.background(0, 0, 0);
     xPos = 0;
   }
 }
