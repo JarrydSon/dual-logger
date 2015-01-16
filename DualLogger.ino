@@ -49,7 +49,9 @@ void setup()
   // output, even if you don't use it:
   pinMode(10, OUTPUT);
   pinMode (3, INPUT_PULLUP);
+  attachInterrupt (1, buttonTemperature, FALLING);
   pinMode (2, INPUT_PULLUP);
+  attachInterrupt(0,buttonVoltage, FALLING);
 
 
   screen.begin();
@@ -97,8 +99,6 @@ void loop()
     {
       displayGraph(1);
     }
-
-    checkButton();
     delay(1000);
   }
   else {
@@ -108,19 +108,18 @@ void loop()
 }
 
 //=========================================================FUNCTIONS===============================================
-void checkButton()
+void buttonVoltage()
 {
-  if (digitalRead(2) == 0) {
-    choice = 'V';
-    screen.background(0, 0, 0);
-    xPos = 0;
-  }
-  if (digitalRead(3) == 0) {
-    choice = 'T';
-    screen.background(0, 0, 0);
-    xPos = 0;
-  }
-  
+   choice = 'V';
+   screen.background(0, 0, 0);
+   xPos = 0;
+}
+
+void buttonTemperature()
+{
+   choice = 'T';
+   screen.background(0, 0, 0);
+   xPos = 0;
 }
 void displayGraph (int pin)
 {
