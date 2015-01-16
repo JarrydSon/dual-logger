@@ -1,3 +1,4 @@
+//Now part of a repository on GitHub :D
 /*
  The circuit:
  * analog sensors on analog 0
