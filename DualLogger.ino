@@ -1,23 +1,30 @@
-//Now part of a repository on GitHub :D
-//Could probably do with better code. I don't like the way I've done things. So inefficient.
 /*
  The circuit:
- * analog sensors on analog 0
- * SD card attached to SPI bus as follows:
+ *The battery voltage is to be measured on A0 and an LM35 temperature sensor output on A1
+ * Arduin LCD + SD module is attached to the SPI bus as follows:
  ** MOSI - pin 11
  ** MISO - pin 12
  ** CLK - pin 13
- ** CS - pin 4
+ ** SD_CS - pin 4
+ ** LD_CS - pin 10
+ ** CD - pin 9
+ ** RESET - pin 8
+ ** BL - +5V
 */
 
 #include <SPI.h>
 #include <SD.h>
 #include <TFT.h>
 
+//Pin defines
 #define SD_CS 4
 #define LD_CS 10
 #define CD 9
 #define RESET 8
+
+//Defining options as constants
+#define VOLTAGE 0
+#define TEMPERATURE 1
 
 TFT screen = TFT(LD_CS, CD, RESET);
 
@@ -26,49 +33,40 @@ int lineCountV = 0;
 int fileCountV = 0;
 int lineCountT = 0;
 int fileCountT = 0;
+
 int xPos = 0;
 String fileName = "";
 String dataString = "";
 char charFileNameV[12] = "vltlog.log";
 char charFileNameT[12] = "tmplog.log";
-char choice;
+char state;
 char menu [100];
 String strMenu = "Enter:\n\t'B' to begin\n\t'E' to exit\n\t'T' Temperature\n\t'V' Voltage";
 
-File dataFile;
+
 
 
 //========================================SETUP======================================================================
 
 void setup()
 {
+  initPins();
+  initScreen();
+
   // Open serial communications and wait for port to open:
   Serial.begin(9600);
-
-  // make sure that the default chip select pin is set to
-  // output, even if you don't use it:
-  pinMode(10, OUTPUT);
-  pinMode (3, INPUT_PULLUP);
-  attachInterrupt (1, buttonTemperature, FALLING); //Interrupts on the buttons
-  pinMode (2, INPUT_PULLUP);
-  attachInterrupt(0,buttonVoltage, FALLING);
-
-
-  screen.begin();
-  screen.background (0, 0, 0);
-  screen.stroke (0, 255, 0);
-  screen.setRotation(2);
-  strMenu.toCharArray(menu, 100);
-  screen.text(menu, 0, 0);
   Serial.println (strMenu);
-  while (choice != 'B') {
-    choice = Serial.read();
+
+  while (state != 'B') //Wait for user to enter option to begin
+  {
+    state = Serial.read();
   }
 
-  // see if the card is present and can be initialized:
+  // Erase menu
   screen.stroke (0, 0, 0);
   screen.text(menu, 0, 0);
 
+  //Initialise SD card if present
   if (!SD.begin(SD_CS)) {
     Serial.println("Card failed, or not present");
     // don't do anything more:
@@ -81,62 +79,75 @@ void setup()
 //===================================================MAIN LOOP====================================================
 void loop()
 {
-  if (choice != 'E')
+  if (state != 'E')
   {
-    getSensorData(0);
-    writeToFile("Voltage");
-    updateCount("Voltage");
-
-    getSensorData(1);
-    writeToFile("Temperature");
-    updateCount("Temperature");
-
-    if (choice == 'V')
-    {
-      displayGraph(0);
-    }
-    else
-    {
-      displayGraph(1);
-    }
-    delay(1000);
+    writeToSD();
+    displayGraph();
+    delay(2000);
   }
-  else {
-    dataFile.close();
-    while (1) {}
-  }
+  else
+    while (1) {}//Do nothing
+
 }
 
 //=========================================================FUNCTIONS===============================================
-void buttonVoltage()
+
+//Function to initialise the necessary pins
+void initPins ()
 {
-   choice = 'V';
-   screen.background(0, 0, 0);
-   xPos = 0;
+  // make sure that the default chip select pin is set to
+  // output, even if you don't use it:
+  pinMode(10, OUTPUT);
+  pinMode (3, INPUT_PULLUP);
+  pinMode (2, INPUT_PULLUP);
+
+  attachInterrupt (1, buttonTemperature, FALLING); //Interrupts on the buttons
+  attachInterrupt(0, buttonVoltage, FALLING);
 }
 
-void buttonTemperature()
+//Function to initialise the LCD screen
+void initScreen()
 {
-   choice = 'T';
-   screen.background(0, 0, 0);
-   xPos = 0;
+  screen.begin();
+  screen.background (0, 0, 0); //Black background
+  screen.stroke (0, 255, 0); //Green font
+  screen.setRotation(2); //Verticle screen orientation
+  strMenu.toCharArray(menu, 100);
+  screen.text(menu, 0, 0);//Diplay the menu on the LCD screen
 }
-void displayGraph (int pin)
+
+//Function to display the data on the LCD screen
+void displayGraph ()
 {
+  int pin = 0;
   int sensor = 0;
+
+  if (state == 'V')
+  {
+    pin = VOLTAGE;
+  }
+  else
+    pin = TEMPERATURE;
+
   sensor = analogRead(pin);
-  int drawHeight = map(sensor, 0, 1023, 0, screen.height());
-  switch (pin) {
-    case 0:
+
+  int drawHeight = map(sensor, 0, 1023, 0, screen.height() - 20);
+
+  //Change stroke colours
+  switch (pin)
+  {
+    case VOLTAGE:
       screen.stroke (255, 0, 0);
       break;
-    case 1:
+    case TEMPERATURE:
       screen.stroke (0, 255, 120);
       break;
     default:
       screen.stroke (255, 255, 255);
       break;
   }
+
+  //Refresh screen if the graph has reached the edge
   if (xPos >= screen.width()) {
     xPos = 0;
     screen.background(0, 0, 0);
@@ -147,63 +158,63 @@ void displayGraph (int pin)
   }
 
   screen.line(xPos, screen.height() - drawHeight, xPos, screen.height());
-
   delay(16);
 }
 
-void getSensorData(int pin)
+//Reads the sensor data and formats this along with the time in a comma delimited format.
+String formatSensorData(int pin)
 {
   int sensor = 0;
   sensor = analogRead(pin);
   dataString = (String(millis() / 1000));
   dataString += (",");
   dataString += String(sensor);
+  return dataString;
 }
 
-void writeToFile(String fileType)
+//Open, write and update files on the SD card
+void writeToSD()
 {
-  if (fileType == "Voltage") {
-    dataFile = SD.open(charFileNameV, FILE_WRITE);
-  }
-  else {
-    dataFile = SD.open(charFileNameT, FILE_WRITE);
-  }
-  // if the file is available, write to it:
-  if (dataFile) {
-    dataFile.println(dataString);
-    dataFile.close();
-    // print to the serial port too:
-    Serial.print("Line: ");
-    if (fileType == "Voltage")
-    {
-      Serial.print (lineCountV);
-    }
-    else
-    { Serial.print (lineCountT);
-    }
-    Serial.print(" Data: ");
-    Serial.println(dataString);
-  }
-  // if the file isn't open, pop up an error:
-  else {
-    Serial.print("error opening: ");
-    Serial.println(fileName);
-  }
+  File dataFile;
+
+  dataFile = SD.open(charFileNameV, FILE_WRITE);
+  writeToFile (formatSensorData(VOLTAGE), dataFile);
+  updateCount (VOLTAGE);
+
+  dataFile = SD.open(charFileNameT, FILE_WRITE);
+  writeToFile (formatSensorData(TEMPERATURE), dataFile);
+  updateCount (TEMPERATURE);
 }
 
-void updateCount(String fileType)//I don't like this section
+//Function for writeToSD to write the data to a file
+void writeToFile (String data, File currentFile)
 {
-  if (fileType == "Voltage")
+  if (currentFile)
+  {
+    currentFile.println(data);
+    currentFile.close();
+  }
+  else
+    Serial.println ("Error opening the file");
+}
+
+//Function for writeToSD to increment the line count and change the name of the file if required
+void updateCount(int fileType)//I don't like this section
+{
+  if (fileType == VOLTAGE)
   {
     lineCountV ++;
     if (lineCountV >= 50) //if the line count exceeds 50 then fileCount will be incremented and thus a new file should be created.
     {
       lineCountV = 0;
-      fileCountV++;
-      fileName = ("vltlog");
-      fileName += String(fileCountV);
-      fileName += ".log";
-      fileName.toCharArray (charFileNameV, 12);
+      do
+      {
+        fileCountV++;
+        fileName = ("vltlog");
+        fileName += String(fileCountV);
+        fileName += ".log";
+        fileName.toCharArray (charFileNameV, 12);
+      } while (SD.exists(charFileNameV));
       Serial.println("Saving to new file: " + fileName);
     }
   }
@@ -212,16 +223,22 @@ void updateCount(String fileType)//I don't like this section
     lineCountT ++;
     if (lineCountT >= 50) //if the line count exceeds 50 then fileCount will be incremented and thus a new file should be created.
     {
-      lineCountT = 0;
-      fileCountT++;
-      fileName = ("tmplog");
-      fileName += String(fileCountT);
-      fileName += ".log";
-      fileName.toCharArray (charFileNameT, 12);
+      lineCountT = 0;      
+      do
+      {
+        fileCountT++;
+        fileName = ("tmplog");
+        fileName += String(fileCountT);
+        fileName += ".log";
+        fileName.toCharArray (charFileNameT, 12);
+      }while(SD.exists(charFileNameT));
+      
       Serial.println("Saving to new file: " + fileName);
     }
   }
 }
+
+//==========================================================INTERRUPTS=============================================================================
 
 void serialEvent()
 {
@@ -229,13 +246,31 @@ void serialEvent()
   {
     // get the new byte:
     char inChar = (char)Serial.read();
-    choice = inChar;
+    state = inChar;
     screen.background(0, 0, 0);
     xPos = 0;
   }
 }
 
+void buttonVoltage()
+{
+  state = 'V';
+  screen.background(0, 0, 0);
+  xPos = 0;
 
+  screen.stroke (255, 255, 255);
+  screen.text ("Voltage", (screen.width() / 2) - 3, 2);
+}
+
+void buttonTemperature()
+{
+  state = 'T';
+  screen.background(0, 0, 0);
+  xPos = 0;
+
+  screen.stroke(255, 255, 255);
+  screen.text ("Temperature", (screen.width() / 2) - 5, 2);
+}
 
 
 
