@@ -1,7 +1,9 @@
 /*
  The circuit:
- *The battery voltage is to be measured on A0 and an LM35 temperature sensor output on A1
- * Arduin LCD + SD module is attached to the SPI bus as follows:
+ *The battery voltage is to be measured on A0. The 24V (25.2V ~ maximum) bus voltage must be stepped down to a range between 0-5V before using it as an input.
+ *A suggested method is to use a resistor voltage divider to divide the voltage by 6. A 5V zener can also be used to clamp the voltage if it does exceed the 5V maximum. 
+ *An LM35 temperature sensor output on A1. The voltage is a linear function of temperature. The datasheet states 10mV/degreeCelcius.
+ * Arduino TFT + SD module is attached to the SPI bus as follows:
  ** MOSI - pin 11
  ** MISO - pin 12
  ** CLK - pin 13
