@@ -1,13 +1,15 @@
-//Now part of a repository on GitHub :D
-//Could probably do with better code. I don't like the way I've done things. So inefficient.
 /*
  The circuit:
- * analog sensors on analog 0
- * SD card attached to SPI bus as follows:
+ *The battery voltage is to be measured on A0 and an LM35 temperature sensor output on A1
+ * Arduin LCD + SD module is attached to the SPI bus as follows:
  ** MOSI - pin 11
  ** MISO - pin 12
  ** CLK - pin 13
- ** CS - pin 4
+ ** SD_CS - pin 4
+ ** LD_CS - pin 10
+ ** CD - pin 9
+ ** RESET - pin 8
+ ** BL - +5V
 */
 
 #include <SPI.h>
@@ -176,7 +178,7 @@ void writeToFile(String fileType)
     Serial.print("Line: ");
     if (fileType == "Voltage")
     {
-      Serial.print (lineCountV);
+      Serial.print (lineCountV); //The different counts are only useful if the frequency of the sensor readings differs
     }
     else
     { Serial.print (lineCountT);
