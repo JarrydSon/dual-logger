@@ -166,8 +166,18 @@ void displayGraph ()
 //Reads the sensor data and formats this along with the time in a comma delimited format.
 String formatSensorData(int pin)
 {
-  int sensor = 0;
+  float sensor = 0;
   sensor = analogRead(pin);
+  if(pin == VOLTAGE)
+  {
+    sensor = (float)map (sensor, 0, 1023, 0, 25.2);
+  }
+  else
+  {
+    sensor = (float)(map (sensor, 0,1023,0,5.0)); //maps bits to voltage range on the LM35
+    sensor = (float)sensor/0.01; //Convert to temperature by dividing by 0.01 (10mV)
+  }
+  
   dataString = (String(millis() / 1000));
   dataString += (",");
   dataString += String(sensor);
